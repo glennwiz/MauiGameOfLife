@@ -8,7 +8,7 @@ namespace MauiGameOfLife
     public partial class MainPage : ContentPage
     {
         const int GridSize = 30;
-        const int CellSize = 20; // Adjust the cell size as needed
+        const int CellSize = 20;
         Cell[,] cells = new Cell[GridSize, GridSize];
 
         bool isRunning = false;
@@ -18,19 +18,17 @@ namespace MauiGameOfLife
         {
             InitializeComponent();
             CreateGrid();
-            InitializeGame(); // Initialize the game and start the simulation
+            InitializeGame();
         }
 
         void CreateGrid()
         {
-            // Define rows and columns with fixed sizes
             for (int i = 0; i < GridSize; i++)
             {
                 GameGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(CellSize) });
                 GameGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CellSize) });
             }
 
-            // Create cells using Border for borders
             for (int row = 0; row < GridSize; row++)
             {
                 for (int col = 0; col < GridSize; col++)
@@ -41,8 +39,6 @@ namespace MauiGameOfLife
                         StrokeThickness = 1,
                         BackgroundColor = Colors.White
                     };
-
-                    // Add tap gesture to toggle cell state
                     var tapGesture = new TapGestureRecognizer();
                     int capturedRow = row;
                     int capturedCol = col;
@@ -68,10 +64,14 @@ namespace MauiGameOfLife
 
         void InitializeGame()
         {
-            // Stop the simulation if it's running
             StopSimulation();
+            ClearGrid();
+            SpawnPattern("Glider", GridSize / 2, GridSize / 2);           
+            StartSimulation();
+        }
 
-            // Clear all cells
+        void ClearGrid()
+        {
             for (int row = 0; row < GridSize; row++)
             {
                 for (int col = 0; col < GridSize; col++)
@@ -80,19 +80,6 @@ namespace MauiGameOfLife
                     UpdateCellVisual(cells[row, col]);
                 }
             }
-
-            // Place a glider in the middle
-            int midRow = GridSize / 2;
-            int midCol = GridSize / 2;
-
-            SetCellAlive(midRow, midCol);
-            SetCellAlive(midRow, midCol + 1);
-            SetCellAlive(midRow, midCol + 2);
-            SetCellAlive(midRow + 1, midCol + 2);
-            SetCellAlive(midRow + 2, midCol + 1);
-
-            // Start the simulation automatically
-            StartSimulation();
         }
 
         void SetCellAlive(int row, int col)
@@ -162,6 +149,82 @@ namespace MauiGameOfLife
         void OnResetButtonClicked(object sender, EventArgs e)
         {
             InitializeGame();
+        }
+
+        void OnSpawnPatternClicked(object sender, EventArgs e)
+        {
+            var button = sender as Button;
+            string patternName = button.Text;
+            StopSimulation();
+
+            ClearGrid();
+            SpawnPattern(patternName, GridSize / 2, GridSize / 2);
+            StartSimulation();
+        }
+
+        void SpawnPattern(string patternName, int startRow, int startCol)
+        {
+            switch (patternName)
+            {
+                case "Glider":
+                    SetCellAlive(startRow, startCol);
+                    SetCellAlive(startRow, startCol + 1);
+                    SetCellAlive(startRow, startCol + 2);
+                    SetCellAlive(startRow + 1, startCol + 2);
+                    SetCellAlive(startRow + 2, startCol + 1);
+                    break;
+
+                case "Blinker":
+                    SetCellAlive(startRow, startCol - 1);
+                    SetCellAlive(startRow, startCol);
+                    SetCellAlive(startRow, startCol + 1);
+                    break;
+
+                case "Toad":
+                    SetCellAlive(startRow, startCol + 1);
+                    SetCellAlive(startRow, startCol + 2);
+                    SetCellAlive(startRow, startCol + 3);
+                    SetCellAlive(startRow + 1, startCol);
+                    SetCellAlive(startRow + 1, startCol + 1);
+                    SetCellAlive(startRow + 1, startCol + 2);
+                    break;
+
+                case "Beacon":
+                    SetCellAlive(startRow, startCol);
+                    SetCellAlive(startRow, startCol + 1);
+                    SetCellAlive(startRow + 1, startCol);
+                    SetCellAlive(startRow + 1, startCol + 1);
+                    SetCellAlive(startRow + 2, startCol + 2);
+                    SetCellAlive(startRow + 2, startCol + 3);
+                    SetCellAlive(startRow + 3, startCol + 2);
+                    SetCellAlive(startRow + 3, startCol + 3);
+                    break;
+
+                case "Pulsar":
+                    int r = startRow - 6;
+                    int c = startCol - 6;
+                    int[][] offsets = new int[][]
+                    {
+                        new int[]{2,0},new int[]{3,0},new int[]{4,0},new int[]{8,0},new int[]{9,0},new int[]{10,0},
+                        new int[]{0,2},new int[]{5,2},new int[]{7,2},new int[]{12,2},
+                        new int[]{0,3},new int[]{5,3},new int[]{7,3},new int[]{12,3},
+                        new int[]{0,4},new int[]{5,4},new int[]{7,4},new int[]{12,4},
+                        new int[]{2,5},new int[]{3,5},new int[]{4,5},new int[]{8,5},new int[]{9,5},new int[]{10,5},
+                        new int[]{2,7},new int[]{3,7},new int[]{4,7},new int[]{8,7},new int[]{9,7},new int[]{10,7},
+                        new int[]{0,8},new int[]{5,8},new int[]{7,8},new int[]{12,8},
+                        new int[]{0,9},new int[]{5,9},new int[]{7,9},new int[]{12,9},
+                        new int[]{0,10},new int[]{5,10},new int[]{7,10},new int[]{12,10},
+                        new int[]{2,12},new int[]{3,12},new int[]{4,12},new int[]{8,12},new int[]{9,12},new int[]{10,12}
+                    };
+                    foreach (var offset in offsets)
+                    {
+                        SetCellAlive(r + offset[1], c + offset[0]);
+                    }
+                    break;
+
+                default:
+                    break;
+            }
         }
 
         void NextGeneration()
