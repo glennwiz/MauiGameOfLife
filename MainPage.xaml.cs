@@ -1,48 +1,66 @@
 ﻿using Microsoft.Maui.Controls;
 using System;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace MauiGameOfLife
 {
     public partial class MainPage : ContentPage
     {
         const int GridSize = 30;
+        const int CellSize = 20; // Adjust the cell size as needed
         Cell[,] cells = new Cell[GridSize, GridSize];
+
+        bool isRunning = false;
+        CancellationTokenSource cancellationTokenSource;
 
         public MainPage()
         {
-            InitializeComponent(); // Ensure this method is called in the constructor
+            InitializeComponent();
             CreateGrid();
-            InitializeGame();
+            InitializeGame(); // Initialize the game and start the simulation
         }
 
         void CreateGrid()
         {
-            // Define rows and columns
+            // Define rows and columns with fixed sizes
             for (int i = 0; i < GridSize; i++)
             {
-                GameGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Star });
-                GameGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                GameGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(CellSize) });
+                GameGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CellSize) });
             }
 
-            // Create cells
+            // Create cells using Border for borders
             for (int row = 0; row < GridSize; row++)
             {
                 for (int col = 0; col < GridSize; col++)
                 {
-                    var box = new BoxView
+                    var border = new Border
                     {
-                        Color = Colors.White,
-                        Margin = new Thickness(0.5) // Simulate border thickness
+                        Stroke = Colors.Gray,
+                        StrokeThickness = 1,
+                        BackgroundColor = Colors.White
                     };
 
-                    GameGrid.Add(box, col, row);
+                    // Add tap gesture to toggle cell state
+                    var tapGesture = new TapGestureRecognizer();
+                    int capturedRow = row;
+                    int capturedCol = col;
+                    tapGesture.Tapped += (s, e) =>
+                    {
+                        cells[capturedRow, capturedCol].IsAlive = !cells[capturedRow, capturedCol].IsAlive;
+                        UpdateCellVisual(cells[capturedRow, capturedCol]);
+                    };
+                    border.GestureRecognizers.Add(tapGesture);
+
+                    GameGrid.Add(border, col, row);
 
                     cells[row, col] = new Cell
                     {
                         Row = row,
                         Col = col,
                         IsAlive = false,
-                        BoxView = box
+                        Border = border
                     };
                 }
             }
@@ -50,6 +68,19 @@ namespace MauiGameOfLife
 
         void InitializeGame()
         {
+            // Stop the simulation if it's running
+            StopSimulation();
+
+            // Clear all cells
+            for (int row = 0; row < GridSize; row++)
+            {
+                for (int col = 0; col < GridSize; col++)
+                {
+                    cells[row, col].IsAlive = false;
+                    UpdateCellVisual(cells[row, col]);
+                }
+            }
+
             // Place a glider in the middle
             int midRow = GridSize / 2;
             int midCol = GridSize / 2;
@@ -60,12 +91,8 @@ namespace MauiGameOfLife
             SetCellAlive(midRow + 1, midCol + 2);
             SetCellAlive(midRow + 2, midCol + 1);
 
-            // Start the game loop
-            Device.StartTimer(TimeSpan.FromMilliseconds(200), () =>
-            {
-                NextGeneration();
-                return true; // Return true to keep the timer running
-            });
+            // Start the simulation automatically
+            StartSimulation();
         }
 
         void SetCellAlive(int row, int col)
@@ -79,7 +106,62 @@ namespace MauiGameOfLife
 
         void UpdateCellVisual(Cell cell)
         {
-            cell.BoxView.Color = cell.IsAlive ? Colors.Black : Colors.White;
+            cell.Border.BackgroundColor = cell.IsAlive ? Colors.Black : Colors.White;
+        }
+
+        async void StartSimulation()
+        {
+            if (isRunning)
+                return;
+
+            isRunning = true;
+            StartStopButton.Text = "Stop";
+            cancellationTokenSource = new CancellationTokenSource();
+
+            try
+            {
+                while (!cancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    NextGeneration();
+                    await Task.Delay(200, cancellationTokenSource.Token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Handle cancellation if needed
+            }
+            finally
+            {
+                isRunning = false;
+                StartStopButton.Text = "Start";
+            }
+        }
+
+        void StopSimulation()
+        {
+            if (!isRunning)
+                return;
+
+            cancellationTokenSource.Cancel();
+            isRunning = false;
+            StartStopButton.Text = "Start";
+        }
+
+        void OnStartStopButtonClicked(object sender, EventArgs e)
+        {
+            if (isRunning)
+            {
+                StopSimulation();
+            }
+            else
+            {
+                StartSimulation();
+            }
+        }
+
+        void OnResetButtonClicked(object sender, EventArgs e)
+        {
+            InitializeGame();
         }
 
         void NextGeneration()
@@ -96,23 +178,26 @@ namespace MauiGameOfLife
                     newStates[row, col] = isAlive switch
                     {
                         true when aliveNeighbors < 2 => false,
-                        true when aliveNeighbors == 2 || aliveNeighbors == 3 => true,
+                        true when aliveNeighbors is 2 or 3 => true,
                         true when aliveNeighbors > 3 => false,
                         false when aliveNeighbors == 3 => true,
-                        _ => isAlive
+                        _ => false
                     };
                 }
             }
 
-            // Update cells
-            for (int row = 0; row < GridSize; row++)
+            // Update cells on the main thread
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                for (int col = 0; col < GridSize; col++)
+                for (int row = 0; row < GridSize; row++)
                 {
-                    cells[row, col].IsAlive = newStates[row, col];
-                    UpdateCellVisual(cells[row, col]);
+                    for (int col = 0; col < GridSize; col++)
+                    {
+                        cells[row, col].IsAlive = newStates[row, col];
+                        UpdateCellVisual(cells[row, col]);
+                    }
                 }
-            }
+            });
         }
 
         int CountAliveNeighbors(int row, int col)
@@ -143,17 +228,6 @@ namespace MauiGameOfLife
         public int Row { get; set; }
         public int Col { get; set; }
         public bool IsAlive { get; set; }
-        public BoxView BoxView { get; set; }
+        public Border Border { get; set; }
     }
 }
-
-
-public class Cell
-{
-    public int Row { get; set; }
-    public int Col { get; set; }
-    public bool IsAlive { get; set; }
-    public BoxView BoxView { get; set; }
-}
-
-
