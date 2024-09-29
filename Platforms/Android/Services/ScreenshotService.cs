@@ -15,6 +15,32 @@ namespace MauiGameOfLife.Platforms.Android.Services
 {
     public class ScreenshotService : Interfaces.IScreenshotService
     {
+        private readonly GitHubUploadService _githubUploadService;
+
+        public ScreenshotService()
+        {
+            var x = new MauiGameOfLife.Platforms.Android.Services.GitHubUploadService(
+                    owner: "glennwiz",
+                    repo: "MauiGameOfLife",
+                    branch: "image",
+                    personalAccessToken: "%secret%"
+                );  
+
+            _githubUploadService = x;
+        }
+
+        public async Task<string> CaptureAndUploadScreenshotAsync()
+        {
+            string screenshotPath = await CaptureScreenshotAsync();
+            if (!string.IsNullOrEmpty(screenshotPath))
+            {
+                await _githubUploadService.UploadFileAsync(screenshotPath, "Add new screenshot");
+                return "Screenshot captured and uploaded successfully!";
+            }
+            return "Failed to capture or upload screenshot.";
+        }
+
+
         public async Task<string> CaptureScreenshotAsync()
         {
             try
@@ -51,6 +77,8 @@ namespace MauiGameOfLife.Platforms.Android.Services
                 {
                     await bitmap.CompressAsync(Bitmap.CompressFormat.Png, 100, stream);
                 }
+
+                await _githubUploadService.UploadFileAsync(uri.ToString(), "Add new screenshot");
 
                 return uri.ToString();
             }

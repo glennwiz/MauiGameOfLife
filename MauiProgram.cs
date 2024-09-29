@@ -24,6 +24,7 @@ public static class MauiProgram
         builder.Services.AddTransient<IScreenshotService, MauiGameOfLife.Platforms.Android.Services.ScreenshotService>(); 
 #endif
 
+
         return builder.Build();
 	}
 }
