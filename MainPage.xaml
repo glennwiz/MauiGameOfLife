@@ -25,6 +25,7 @@
                 <Button Text="Toad" Clicked="OnSpawnPatternClicked" Margin="5,0,0,0" />
                 <Button Text="Beacon" Clicked="OnSpawnPatternClicked" Margin="5,0,0,0" />
                 <Button Text="Pulsar" Clicked="OnSpawnPatternClicked" Margin="5,0,0,0" />
+                <Button x:Name="ScreenshotButton" Text="Screenshot" Clicked="OnScreenshotButtonClicked" Margin="10,0,0,0" />
             </StackLayout>
         </ScrollView>
 

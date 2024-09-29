@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MauiGameOfLife.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace MauiGameOfLife;
 
@@ -19,6 +20,10 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
-		return builder.Build();
+#if ANDROID
+        builder.Services.AddTransient<IScreenshotService, MauiGameOfLife.Platforms.Android.Services.ScreenshotService>(); 
+#endif
+
+        return builder.Build();
 	}
 }

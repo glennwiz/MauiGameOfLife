@@ -2,6 +2,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Threading;
+using MauiGameOfLife.Interfaces;
 
 namespace MauiGameOfLife
 {
@@ -9,6 +10,7 @@ namespace MauiGameOfLife
     {
         const int GridSize = 30;
         const int CellSize = 20;
+        private readonly IScreenshotService _screenShotService;
         Cell[,] cells = new Cell[GridSize, GridSize];
 
         bool isRunning = false;
@@ -16,6 +18,9 @@ namespace MauiGameOfLife
 
         public MainPage()
         {
+#if ANDROID
+            _screenShotService = new MauiGameOfLife.Platforms.Android.Services.ScreenshotService();
+#endif
             InitializeComponent();
             CreateGrid();
             InitializeGame();
@@ -283,6 +288,28 @@ namespace MauiGameOfLife
             }
 
             return count;
+        }
+
+        async void OnScreenshotButtonClicked(object sender, EventArgs e)
+        {           
+            //var screenshotService = DependencyService.Get<IScreenshotService>();
+            //if (screenshotService == null)
+            //{
+            //    await DisplayAlert("Error", "Screenshot service not available.", "OK");
+            //    return;
+            //}
+            System.Diagnostics.Debug.WriteLine("Screenshot button clicked");
+            // Capture the screenshot
+            string filePath = await _screenShotService.CaptureScreenshotAsync();
+
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                await DisplayAlert("Screenshot Captured", $"Saved to {filePath}", "OK");
+            }
+            else
+            {
+                await DisplayAlert("Error", "Failed to capture screenshot.", "OK");
+            }
         }
     }
 
